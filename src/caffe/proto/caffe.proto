@@ -815,8 +815,9 @@ message ImageDataParameter {
   // 添加一个参数
   // Specify the label dim. default 1.
   // 有几种label，比如性别、年龄两种label，在网络结构里就把此参数设置为2
-  optional uint32 label_dim = IDNumber [default = 1]; 
+  //optional uint32 label_dim = IDNumber [default = 1]; 
   // IDNumber是和其它参数不冲突的ID数字
+  optional uint32 label_dim = 15 [default = 1];
 }
 
 message InfogainLossParameter {
