@@ -39,7 +39,7 @@ class ImageDataLayer : public BasePrefetchingDataLayer<Dtype> {
 
   /////////////////////// mutil_label /////////////////////////
   // 修改vector<std::pair<std::string, int> > lines_;
-  // string对应那个train.txt中的图片名称，in对应label，我们把int改为int*,实现多label
+  // string对应那个train.txt中的图片名称，int对应label，我们把int改为int*,实现多label
   vector<std::pair<std::string, int *> > lines_;
   //vector<std::pair<std::string, int> > lines_;
   /////////////////////// mutil_label /////////////////////////
