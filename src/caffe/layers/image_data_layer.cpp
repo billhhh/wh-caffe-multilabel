@@ -36,6 +36,11 @@ void ImageDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
   // Read the file with filenames and labels
   const string& source = this->layer_param_.image_data_param().source();
   LOG(INFO) << "Opening file " << source;
+  
+  /////////////////////// mutil_label /////////////////////////
+  // DataLayerSetUp函数
+  // 原本的加载图片名称和label的代码
+  /*
   std::ifstream infile(source.c_str());
   string line;
   size_t pos;
@@ -45,6 +50,23 @@ void ImageDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
     label = atoi(line.substr(pos + 1).c_str());
     lines_.push_back(std::make_pair(line.substr(0, pos), label));
   }
+  */
+  
+  // 修改为这样
+  std::ifstream infile(source.c_str());
+  string filename;
+  // 获取label的种类
+  int label_dim = this->layer_param_.image_data_param().label_dim();
+  // 注意这里默认每个label直接以空格隔开，每个图片名称及其label占一行，如果你的格式不同，可自行修改读取方式
+  while (infile >> filename) {
+    int* labels = new int[label_dim];
+    for(int i = 0;i < label_dim;++i){
+        infile >> labels[i];
+    }
+    lines_.push_back(std::make_pair(filename, labels));
+  }
+  /////////////////////// mutil_label /////////////////////////
+  
 
   CHECK(!lines_.empty()) << "File is empty";
 
@@ -91,11 +113,32 @@ void ImageDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
       << top[0]->channels() << "," << top[0]->height() << ","
       << top[0]->width();
   // label
+  
+  /////////////////////// mutil_label /////////////////////////
+  // 原本的输出label
+  /*
   vector<int> label_shape(1, batch_size);
   top[1]->Reshape(label_shape);
   for (int i = 0; i < this->prefetch_.size(); ++i) {
     this->prefetch_[i]->label_.Reshape(label_shape);
   }
+  */
+  
+  // 修改为这样
+  
+  // 注意：caffe最新版本prefetch_的结构由之前的Batch<Dtype> prefetch_[PREFETCH_COUNT];
+  // 改为 vector<shared_ptr<Batch<Dtype> > > prefetch_; 由对象数组改为了存放shared指针的vector。
+  // 所以此处的this->PREFETCH_COUNT改为this->prefetch_.size(); 
+  // 此处的this->prefetch_[i].label_.Reshape(label_shape);
+  // 改为this->prefetch_[i]->label_.Reshape(label_shape);把.改成指针的->
+  vector<int> label_shape(2);
+  label_shape[0] = batch_size;
+  label_shape[1] = label_dim;
+  top[1]->Reshape(label_shape); // label的输出shape batch_size*label_dim
+  for (int i = 0; i < this->prefetch_.size(); ++i) {
+    this->prefetch_[i]->label_.Reshape(label_shape);
+  }
+  /////////////////////// mutil_label /////////////////////////
 }
 
 template <typename Dtype>
@@ -108,6 +151,13 @@ void ImageDataLayer<Dtype>::ShuffleImages() {
 // This function is called on prefetch thread
 template <typename Dtype>
 void ImageDataLayer<Dtype>::load_batch(Batch<Dtype>* batch) {
+
+  /////////////////////// mutil_label /////////////////////////
+  // load_batch函数
+  // 在函数一开始先获取下label_dim参数
+  int label_dim = this->layer_param_.image_data_param().label_dim();
+  /////////////////////// mutil_label /////////////////////////
+
   CPUTimer batch_timer;
   batch_timer.Start();
   double read_time = 0;
@@ -154,7 +204,17 @@ void ImageDataLayer<Dtype>::load_batch(Batch<Dtype>* batch) {
     this->data_transformer_->Transform(cv_img, &(this->transformed_data_));
     trans_time += timer.MicroSeconds();
 
-    prefetch_label[item_id] = lines_[lines_id_].second;
+	/////////////////////// mutil_label /////////////////////////
+	// 原本的预取label
+    // prefetch_label[item_id] = lines_[lines_id_].second;
+	
+	// 修改为这样
+	for(int i = 0;i < label_dim;++i){
+		// lines_[lines_id_].second就是最开始改为的int*,多label
+		prefetch_label[item_id * label_dim + i] = lines_[lines_id_].second[i];
+	}
+	/////////////////////// mutil_label /////////////////////////
+	
     // go to the next iter
     lines_id_++;
     if (lines_id_ >= lines_size) {
